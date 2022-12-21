@@ -1,9 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.22"
+    kotlin("jvm").version("1.7.22")
     `java-gradle-plugin`
     `maven-publish`
+    id("dev.fastmc.maven-repo").version("1.0-SNAPSHOT")
 }
 
 gradlePlugin {
