@@ -59,6 +59,7 @@ class MultiJdkPlugin @Inject constructor(
             rootProject.subprojects { subproject ->
                 subproject.group = rootProject.group
                 subproject.version = rootProject.version
+                subproject.repositories.addAll(rootProject.repositories)
 
                 rootProject.sourceSets.forEach { rootSourceSet ->
                     rootProject.tasks.named(rootSourceSet.classesTaskName).configure {
@@ -66,8 +67,6 @@ class MultiJdkPlugin @Inject constructor(
                     }
 
                     subproject.sourceSets.maybeCreate(rootSourceSet.name).let { sourceSet ->
-                        subproject.repositories.addAll(rootProject.repositories)
-
                         fun extendConfigurationFrom(configurationNameFunction: (SourceSet) -> String) {
                             val root = rootProject.configurations.findByName(configurationNameFunction(rootSourceSet))
                             val sub = subproject.configurations.findByName(configurationNameFunction(sourceSet))
@@ -89,6 +88,8 @@ class MultiJdkPlugin @Inject constructor(
                         extendConfigurationFrom(SourceSet::getJavadocElementsConfigurationName)
                         extendConfigurationFrom(SourceSet::getSourcesElementsConfigurationName)
 
+                        sourceSet.compileClasspath += rootSourceSet.output
+
                         configureProcessResources(subproject, sourceSet, rootProject, rootSourceSet)
                         configureJavaCompile(subproject, sourceSet, rootProject, rootSourceSet)
                         configureKotlinCompile(rootProject, rootSourceSet, subproject, sourceSet)
@@ -108,7 +109,7 @@ class MultiJdkPlugin @Inject constructor(
             }
 
             multiJdkComponent.addVariantsFromConfiguration(rootProject.configurations.getByName("sourcesElements")) {
-                it.mapToMavenScope("compile")
+                it.mapToMavenScope("runtime")
             }
         }
     }
@@ -116,10 +117,12 @@ class MultiJdkPlugin @Inject constructor(
     private fun copyConfiguration(
         rootProject: Project,
         subproject: Project,
-        name: String
+        name: String,
+        classifier: String = if (subproject.javaVersion.asInt() == 8) "" else "Java${subproject.javaVersion.asInt()}",
     ): Configuration {
-        val root = rootProject.configurations.create("${name}Java${subproject.javaVersion.asInt()}")
+        val root = rootProject.configurations.maybeCreate("$name$classifier")
         val sub = subproject.configurations.getByName(name)
+        root.artifacts.clear()
         root.artifacts.addAll(sub.artifacts)
         root.extendsFrom(sub)
         sub.attributes.keySet().forEach { key ->
