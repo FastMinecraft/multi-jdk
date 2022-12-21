@@ -14,6 +14,8 @@ import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.tasks.Jar
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
+import org.jetbrains.kotlin.gradle.tasks.CompileUsingKotlinDaemon
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import javax.inject.Inject
 
@@ -40,6 +42,14 @@ class MultiJdkPlugin @Inject constructor(
             rootProject.subprojects { subproject ->
                 subproject.apply {
                     it.plugin("kotlin")
+                }
+            }
+
+            rootProject.tasks.withType(CompileUsingKotlinDaemon::class.java).first().let { rootCompile ->
+                rootProject.subprojects { subproject ->
+                    subproject.tasks.withType(CompileUsingKotlinDaemon::class.java) {
+                        it.kotlinDaemonJvmArguments.set(rootCompile.kotlinDaemonJvmArguments)
+                    }
                 }
             }
         }
