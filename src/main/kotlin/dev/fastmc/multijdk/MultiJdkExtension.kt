@@ -55,7 +55,7 @@ abstract class MultiJdkExtension @Inject constructor(private val component: Adho
                 }
                 f.capability(
                     project.group.toString(),
-                    "${project.name}-${version.javaName}",
+                    project.name,
                     project.version.toString()
                 )
                 f.usingSourceSet(sourceSet)
