@@ -2,7 +2,9 @@ package dev.fastmc.multijdk
 
 import org.gradle.api.Action
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.attributes.Attribute
+import org.gradle.api.attributes.java.TargetJvmVersion
 import org.gradle.api.component.AdhocComponentWithVariants
 import org.gradle.api.file.SourceDirectorySet
 import org.gradle.api.plugins.JavaPluginExtension
@@ -48,16 +50,11 @@ abstract class MultiJdkExtension @Inject constructor(private val component: Adho
             project.java.registerFeature(version.javaName) { f ->
                 project.pluginManager.withPlugin("maven-publish") {
                     project.publishing.publications.withType(MavenPublication::class.java).configureEach {
-                        it.suppressPomMetadataWarningsFor("${version.javaName}ApiElements")
-                        it.suppressPomMetadataWarningsFor("${version.javaName}ApiElementsClasses")
-                        it.suppressPomMetadataWarningsFor("${version.javaName}RuntimeElements")
+                        it.suppressPomMetadataWarningsFor("apiElementsJava${version.asInt()}")
+                        it.suppressPomMetadataWarningsFor("apiElementsClassesJava${version.asInt()}")
+                        it.suppressPomMetadataWarningsFor("runtimeElementsJava${version.asInt()}")
                     }
                 }
-                f.capability(
-                    project.group.toString(),
-                    project.name,
-                    project.version.toString()
-                )
                 f.usingSourceSet(sourceSet)
             }
 
@@ -68,31 +65,48 @@ abstract class MultiJdkExtension @Inject constructor(private val component: Adho
     }
 
     private fun configureComponent(version: JavaLanguageVersion) {
-        val apiElements = project.configurations.getByName("${version.javaName}ApiElements").attributes { sub ->
-            project.configurations.getByName("apiElements").attributes.let { root ->
-                root.keySet().forEach {
-                    if (it.name == "org.gradle.jvm.version") return@forEach
-                    @Suppress("UNCHECKED_CAST")
-                    sub.attribute(it as Attribute<Any>, root.getAttribute(it)!!)
-                }
-            }
-        }
+        val apiElements = copyConfiguration(
+            "${version.javaName}ApiElements",
+            "apiElementsJava${version.asInt()}",
+            "apiElements",
+            version
+        )
         component.addVariantsFromConfiguration(apiElements) {
             it.mapToMavenScope("compile")
         }
-        val runtimeElement =
-            project.configurations.getByName("${version.javaName}RuntimeElements").attributes { sub ->
-                project.configurations.getByName("runtimeElements").attributes.let { root ->
-                    root.keySet().forEach {
-                        if (it.name == "org.gradle.jvm.version") return@forEach
-                        @Suppress("UNCHECKED_CAST")
-                        sub.attribute(it as Attribute<Any>, root.getAttribute(it)!!)
-                    }
-                }
-            }
+        val runtimeElement = copyConfiguration(
+            "${version.javaName}RuntimeElements",
+            "runtimeElementsJava${version.asInt()}",
+            "runtimeElements",
+            version
+        )
         component.addVariantsFromConfiguration(runtimeElement) {
             it.mapToMavenScope("runtime")
         }
+    }
+
+    private fun copyConfiguration(
+        nameFrom: String,
+        nameTo: String,
+        attributeSource: String,
+        version: JavaLanguageVersion
+    ): Configuration {
+        val to = project.configurations.create(nameTo)
+        val from = project.configurations.getByName(nameFrom)
+        to.artifacts.addAll(from.artifacts)
+        to.dependencies.addAll(from.dependencies)
+        project.configurations.getByName(attributeSource).attributes.let { src ->
+            src.attributes.keySet().forEach {
+                @Suppress("UNCHECKED_CAST")
+                val key = it as Attribute<Any>
+                val value = src.getAttribute(key)!!
+                from.attributes.attribute(key, value)
+                to.attributes.attribute(key, value)
+            }
+        }
+        from.attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, version.asInt())
+        to.attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, version.asInt())
+        return to
     }
 
     private fun SourceSet.configureForJavaVersion(version: JavaLanguageVersion): SourceSet {
