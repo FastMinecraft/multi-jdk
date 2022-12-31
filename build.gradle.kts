@@ -28,5 +28,23 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:1.7.22")
+    val kotlinVersion: String by project
+    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+}
+
+tasks {
+    compileJava {
+        options.encoding = "UTF-8"
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+    }
+
+    compileKotlin {
+        kotlinOptions {
+            jvmTarget = "17"
+            freeCompilerArgs += listOf(
+                "-Xbackend-threads=0"
+            )
+        }
+    }
 }

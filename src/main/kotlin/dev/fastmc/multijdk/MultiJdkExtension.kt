@@ -208,7 +208,6 @@ abstract class MultiJdkExtension @Inject constructor(private val component: Adho
                         sub.noJdk = root.noJdk
                         sub.suppressWarnings = root.suppressWarnings
                         sub.useK2 = root.useK2
-                        sub.useOldBackend = root.useOldBackend
                         sub.verbose = root.verbose
                     }
                 }
