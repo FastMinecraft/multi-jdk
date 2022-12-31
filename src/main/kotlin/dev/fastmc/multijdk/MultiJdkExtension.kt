@@ -33,6 +33,8 @@ abstract class MultiJdkExtension @Inject constructor(private val component: Adho
         base = getOrRegister(version).apply {
             project.afterEvaluate {
                 it.sourceSets.getByName("main").compileClasspath += this.compileClasspath
+                it.sourceSets.getByName("test").compileClasspath += this.output
+                it.sourceSets.getByName("test").runtimeClasspath += this.output
             }
         }
     }
